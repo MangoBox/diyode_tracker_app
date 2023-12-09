@@ -137,9 +137,9 @@ class _MyHomePageState extends State<MyHomePage> {
       for (var point in tr.trackerPoints) {
         _markers.add(Marker(
           point: LatLng(point.lat as double, point.lon as double),
-          width: 40,
-          height: 40,
-          child: const Text("🎒"),
+          width: 80,
+          height: 80,
+          child: Text(point.emoji),
         ));
         //print("Added point @ ${point.lat}, ${point.lon}");
       }

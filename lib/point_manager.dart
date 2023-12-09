@@ -75,6 +75,8 @@ class Tracker {
       tp.lon = record["lon"];
       tp.alt = record["altitude"];
       tp.battery = record["battery"];
+      tp.emoji = record["emoji"] ?? "🔴";
+
       trackerPoints.add(tp);
     });
     print(trackerPoints);
@@ -128,6 +130,7 @@ class TrackerPoint {
   num battery = double.nan;
 
   String address = "";
+  String emoji = "";
   num time = 0;
 
   //TrackerPoint(this.lat, this.lon, this.fullAddress, this.time);
