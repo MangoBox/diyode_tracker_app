@@ -42,6 +42,12 @@ dependencies:
   flutter_map_location_marker: any
   influxdb_client: any
   sliding_up_panel: ^2.0.0+1
+  flutter_launcher_icons: any
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/Icon.png"
 
 dev_dependencies:
   flutter_test:

@@ -132,14 +132,19 @@ class _MyHomePageState extends State<MyHomePage> {
     print("Found Trackers: ${trackers.length}");
     //print("Trackers Found: ${trackers.length}");
     for (var tr in trackers) {
-      await tr.populatePoints(queryService, 12, tr.trackerName);
+      await tr.populatePoints(queryService, 1, tr.trackerName);
       //tr.populatePoints(service, lastHours, trackerName)
       for (var point in tr.trackerPoints) {
         _markers.add(Marker(
+          //alignment: Alignment.center,
           point: LatLng(point.lat as double, point.lon as double),
           width: 80,
           height: 80,
-          child: Text(point.emoji),
+          child: Text(
+            point.emoji,
+            textAlign: TextAlign.center,
+            textScaleFactor: 2,
+          ),
         ));
         //print("Added point @ ${point.lat}, ${point.lon}");
       }
