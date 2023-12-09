@@ -17,57 +17,13 @@ void main() async {
       await PlatformAssetBundle().load('assets/ca/lets-encrypt-r3.pem');
   SecurityContext.defaultContext
       .setTrustedCertificatesBytes(data.buffer.asUint8List());
-  var client = InfluxDBClient(
-      // IMPORTANT: You will need to fill these out in secrets.dart
-      url: secret_url,
-      token: secret_influxAPIkey,
-      org: 'diyode',
-      bucket: 'tracker',
-      debug: true);
-
-  var healthCheck = await client.getHealthApi().getHealth();
-  print(
-      'Health check: ${healthCheck.name}/${healthCheck.version} - ${healthCheck.message}');
-
-  var queryService = client.getQueryService();
-  /*var fluxQuery = '''
-  from(bucket: "tracker")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r["_measurement"] == "liams_wallet")
-  |> filter(fn: (r) => r["_field"] == "lat" or r["_field"] == "lon")
-  |> last()  ''';
-
-  var count = 0;
-  var recordStream = await queryService.query(fluxQuery);
-
-  double lat = 0;
-  double lon = 0;
-  await recordStream.forEach((record) {
-    print(
-        'record: ${count++} ${record['_time']}: ${record['_field']} ${record['_value']}');
-    if (record['_field'] == "lon") {
-      lon = record['_value'];
-    }
-    if (record['_field'] == "lat") {
-      lat = record['_value'];
-    }
-  });*/
-
-  /*markers.add(Marker(
-    point: LatLng(lat, lon),
-    width: 40,
-    height: 40,
-    child: FlutterLogo(),
-  ));*/
-
-  var tm = TrackerManager(queryService);
-  tm.addTrackers();
 
   //client.close();
 }
 
 List<Marker> _markers = [];
 MapController mapController = MapController();
+late MarkerLayer markerLayer;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -75,6 +31,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    markerLayer = MarkerLayer(markers: []);
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
@@ -105,7 +62,7 @@ FlutterMap getMap() {
   return (FlutterMap(
     mapController: mapController,
     options: MapOptions(
-        center: LatLng(52.1326, 5.2913),
+        initialCenter: LatLng(52.0082, 4.36797),
         maxZoom: 20,
         minZoom: 2,
         interactionOptions: InteractionOptions(rotationThreshold: 50)),
@@ -114,7 +71,7 @@ FlutterMap getMap() {
         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         userAgentPackageName: 'com.example.app',
       ),
-      MarkerLayer(markers: _markers),
+      markerLayer
     ],
   ));
 }
@@ -138,6 +95,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late FlutterMap mapInst;
   int _counter = 0;
 
   double mapWidth = 0;
@@ -152,6 +110,53 @@ class _MyHomePageState extends State<MyHomePage> {
       // called again, and so nothing would appear to happen.
       _counter++;
     });
+  }
+
+  Future<List<Marker>> getMarkers() async {
+    var client = InfluxDBClient(
+        // IMPORTANT: You will need to fill these out in secrets.dart
+        url: secret_url,
+        token: secret_influxAPIkey,
+        org: 'diyode',
+        bucket: 'tracker',
+        debug: true);
+
+    //var healthCheck = await client.getHealthApi().getHealth();
+    //print(
+    //    'Health check: ${healthCheck.name}/${healthCheck.version} - ${healthCheck.message}');
+
+    var queryService = client.getQueryService();
+
+    var tm = TrackerManager(queryService);
+    var trackers = await tm.addTrackers();
+    print("Found Trackers: ${trackers.length}");
+    //print("Trackers Found: ${trackers.length}");
+    for (var tr in trackers) {
+      await tr.populatePoints(queryService, 12, tr.trackerName);
+      //tr.populatePoints(service, lastHours, trackerName)
+      for (var point in tr.trackerPoints) {
+        _markers.add(Marker(
+          point: LatLng(point.lat as double, point.lon as double),
+          width: 40,
+          height: 40,
+          child: const Text("🎒"),
+        ));
+        //print("Added point @ ${point.lat}, ${point.lon}");
+      }
+    }
+    markerLayer = MarkerLayer(markers: _markers);
+    return _markers;
+  }
+
+  void CompletedMarkerFetch() {
+    setState(() {});
+    print("Setting markers...");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getMarkers().whenComplete(() => CompletedMarkerFetch());
   }
 
   @override
@@ -210,7 +215,7 @@ class _MyHomePageState extends State<MyHomePage> {
         body: Center(
             // Center is a layout widget. It takes a single child and positions it
             // in the middle of the parent.
-            child: (getMap())),
+            child: (mapInst = getMap())),
       ),
 
       // This trailing comma makes auto-formatting nicer for build methods.

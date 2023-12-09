@@ -13,20 +13,22 @@ class TrackerManager {
 
   TrackerManager(this.queryService);
 
-  Future<void> addTrackers() async {
+  Future<List<Tracker>> addTrackers() async {
     var fluxQuery = '''
     import "influxdata/influxdb/schema"
     schema.measurements(bucket: "tracker")
     ''';
 
+    print("Querying Trackers...");
     var trackerList = await queryService.query(fluxQuery);
-
-    await trackerList.forEach((tracker) {
+    print("Finished querying Trackers.");
+    await trackerList.forEach((tracker) async {
       var tr = Tracker(tracker['_value'] as String);
       print("Found Tracker: ${tracker['_value']}");
-      tr.populatePoints(queryService, lastHoursFetched, tr.trackerName);
+
       trackers.add(tr);
     });
+    return trackers;
   }
 }
 
@@ -75,14 +77,14 @@ class Tracker {
       tp.battery = record["battery"];
       trackerPoints.add(tp);
     });
-    /*print(trackerPoints);
+    print(trackerPoints);
     trackerPoints.forEach((point) {
       print(
           "Tracker ${trackerName}: Address: ${point.address} (Lat: ${point.lat}, Lon: ${point.lon}), ${point.battery}% Battery, Time: ${point.time}");
-    });*/
+    });
 
-    /*print(fluxQuery);
-
+    print(fluxQuery);
+    /*
     var foundPoints = await service.query(fluxQuery);
     var count = 0;
     var curTrackerPointIdx = -1;
