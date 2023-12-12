@@ -18,17 +18,19 @@ class TrackerManager {
     import "influxdata/influxdb/schema"
     schema.measurements(bucket: "tracker")
     ''';
-
     print("Querying Trackers...");
     var trackerList = await queryService.query(fluxQuery);
     print("Finished querying Trackers.");
     await trackerList.forEach((tracker) async {
       var tr = Tracker(tracker['_value'] as String);
       print("Found Tracker: ${tracker['_value']}");
-
       trackers.add(tr);
     });
     return trackers;
+  }
+
+  Tracker getTrackerByPoint(TrackerPoint point) {
+    return point.owningTracker;
   }
 }
 
@@ -76,6 +78,7 @@ class Tracker {
       tp.alt = record["altitude"];
       tp.battery = record["battery"];
       tp.emoji = record["emoji"] ?? "🔴";
+      tp.owningTracker = this;
 
       trackerPoints.add(tp);
     });
@@ -86,40 +89,6 @@ class Tracker {
     });
 
     print(fluxQuery);
-    /*
-    var foundPoints = await service.query(fluxQuery);
-    var count = 0;
-    var curTrackerPointIdx = -1;
-    TrackerPoint curTrackerPoint = TrackerPoint();
-    await foundPoints.forEach((record) {
-      int tableIndex = record.tableIndex;
-      print("Table Index: $tableIndex");
-      if (curTrackerPointIdx != tableIndex) {
-        //Add the old tracker point if we're on a new table index (and it's not the first one).
-        if (curTrackerPoint.isEmpty() && curTrackerPointIdx != -1) {
-          trackerPoints.add(curTrackerPoint);
-        }
-        //We're now reading data from a different tracker.
-        curTrackerPointIdx = tableIndex;
-        //Initialise a new tracker.
-        curTrackerPoint = TrackerPoint();
-      }
-      print(
-          'record: ${count++} ${record['_time']}: ${record['_field']} ${record['_value']}');
-      if (record['_field'] == "lon") {
-        //lon = record['_value'];
-        curTrackerPoint.lon = record['_value'];
-      }
-      if (record['_field'] == "lat") {
-        curTrackerPoint.lat = record['_value'];
-      }
-      if (record['_field'] == "address") {
-        curTrackerPoint.address = record['_value'];
-      }
-      if (record['_field'] == "last_seen") {
-        curTrackerPoint.time = record['_value'];
-      }
-    });*/
   }
 }
 
@@ -132,6 +101,7 @@ class TrackerPoint {
   String address = "";
   String emoji = "";
   num time = 0;
+  Tracker owningTracker = Tracker("");
 
   //TrackerPoint(this.lat, this.lon, this.fullAddress, this.time);
   TrackerPoint();

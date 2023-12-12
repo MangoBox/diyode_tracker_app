@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:date_format/date_format.dart';
 import 'package:diyode_tracker/point_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:influxdb_client/api.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
+import 'map_manager.dart';
 import 'secrets.dart';
 
 void main() async {
@@ -101,6 +103,18 @@ class _MyHomePageState extends State<MyHomePage> {
   double mapWidth = 0;
   double mapHeight = 0;
 
+  var trackerTitle = "Loading...";
+  var lastSeenText = "Loading...";
+  var batteryText = "...%";
+
+  num lat = 0;
+  num lon = 0;
+
+  var addressInfo = "";
+  var altitude = "?m";
+
+  var batteryIcon = Icons.battery_unknown;
+
   void _incrementCounter() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -132,30 +146,90 @@ class _MyHomePageState extends State<MyHomePage> {
     print("Found Trackers: ${trackers.length}");
     //print("Trackers Found: ${trackers.length}");
     for (var tr in trackers) {
-      await tr.populatePoints(queryService, 1, tr.trackerName);
+      await tr.populatePoints(queryService, 3, tr.trackerName);
       //tr.populatePoints(service, lastHours, trackerName)
       for (var point in tr.trackerPoints) {
         _markers.add(Marker(
-          //alignment: Alignment.center,
-          point: LatLng(point.lat as double, point.lon as double),
-          width: 80,
-          height: 80,
-          child: Text(
-            point.emoji,
-            textAlign: TextAlign.center,
-            textScaleFactor: 2,
-          ),
-        ));
+            //alignment: Alignment.center,
+            point: LatLng(point.lat as double, point.lon as double),
+            width: 80,
+            height: 80,
+            child: GestureDetector(
+              child: Text(
+                point.emoji,
+                textAlign: TextAlign.center,
+                textScaleFactor: 2,
+              ),
+              onTap: () {
+                updateTrackerInfo(point.owningTracker);
+                print("${point.owningTracker.trackerName} was tapped!");
+                setState(() {});
+              },
+            )));
         //print("Added point @ ${point.lat}, ${point.lon}");
       }
     }
     markerLayer = MarkerLayer(markers: _markers);
+    updateTrackerInfo(trackers[0]);
     return _markers;
   }
 
   void CompletedMarkerFetch() {
     setState(() {});
     print("Setting markers...");
+  }
+
+  void updateTrackerInfo(Tracker tracker) {
+    TrackerPoint lastPoint = tracker.trackerPoints.last;
+    trackerTitle = "${lastPoint.emoji}  ${tracker.trackerName}";
+    batteryText = "${lastPoint.battery}%";
+    altitude = "${lastPoint.alt}m";
+    addressInfo = lastPoint.address;
+    lat = lastPoint.lat;
+    lon = lastPoint.lon;
+
+    var date =
+        DateTime.fromMillisecondsSinceEpoch(lastPoint.time.toInt() * 1000);
+    var now = DateTime.now();
+    var format = [HH, ':', nn];
+    var diff = now.difference(date);
+    //Add date info if it was from a different day or more than 24 hours ago.
+    if (now.day != date.day || diff.inHours >= 24) {
+      format = [HH, ':', nn, ' ', d, '/', m];
+    }
+
+    var formatted = formatDate(date, format);
+
+    lastSeenText = "Last Seen: $formatted";
+
+    switch (lastPoint.battery) {
+      case <= 0:
+        batteryIcon = Icons.battery_0_bar;
+        break;
+      case < 15:
+        batteryIcon = Icons.battery_1_bar;
+        break;
+      case < 30:
+        batteryIcon = Icons.battery_2_bar;
+        break;
+      case < 45:
+        batteryIcon = Icons.battery_3_bar;
+        break;
+      case < 60:
+        batteryIcon = Icons.battery_4_bar;
+        break;
+      case < 75:
+        batteryIcon = Icons.battery_5_bar;
+        break;
+      case < 90:
+        batteryIcon = Icons.battery_6_bar;
+      case >= 90:
+        batteryIcon = Icons.battery_full;
+        break;
+      case double() || int():
+        // TODO: Handle this case.
+        batteryIcon = Icons.battery_unknown;
+    }
   }
 
   @override
@@ -199,22 +273,49 @@ class _MyHomePageState extends State<MyHomePage> {
                     color: Colors.limeAccent,
                     child: Padding(
                         padding: EdgeInsets.all(10.0),
-                        child: Text("🎒   Liam's Backpack",
+                        child: Text(trackerTitle,
                             textScaleFactor: 2,
                             textAlign: TextAlign.center,
                             style: GoogleFonts.merriweatherSans()))))
           ]),
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.battery_3_bar, color: Colors.black, size: 35.0),
-            Text("100%",
+            Icon(batteryIcon, color: Colors.black, size: 35.0),
+            Text(batteryText,
                 textScaleFactor: 1.25,
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(width: 50),
             Text(
-              "Last Seen: 9:23pm",
+              lastSeenText,
               textScaleFactor: 1.25,
             ),
+          ]),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.arrow_upward),
+            const SizedBox(width: 5),
+            Text(
+              altitude,
+              textScaleFactor: 1.25,
+            ),
+            const SizedBox(width: 50),
+            ElevatedButton(
+              child: Icon(Icons.map),
+              style: ElevatedButton.styleFrom(
+                primary: Theme.of(context).secondaryHeaderColor,
+                elevation: 0,
+              ),
+              onPressed: () {
+                attemptLaunchGoogleMaps();
+              },
+            ),
+          ]),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Icon(Icons.location_on, color: Colors.black, size: 35.0),
+            Flexible(
+                child: Text(addressInfo,
+                    textScaleFactor: 1.25,
+                    style: const TextStyle(fontWeight: FontWeight.bold)))
           ]),
         ]),
         body: Center(
@@ -225,5 +326,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  void attemptLaunchGoogleMaps() {
+    MapUtils.openMap(lat.toDouble(), lon.toDouble());
   }
 }

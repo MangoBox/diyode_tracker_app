@@ -43,6 +43,8 @@ dependencies:
   influxdb_client: any
   sliding_up_panel: ^2.0.0+1
   flutter_launcher_icons: any
+  date_format: any
+  url_launcher: any
 
 flutter_icons:
   android: "launcher_icon"
