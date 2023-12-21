@@ -106,6 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
   var trackerTitle = "Loading...";
   var lastSeenText = "Loading...";
   var batteryText = "...%";
+  var pointsFoundText = "? points/day";
 
   num lat = 0;
   num lon = 0;
@@ -146,7 +147,7 @@ class _MyHomePageState extends State<MyHomePage> {
     print("Found Trackers: ${trackers.length}");
     //print("Trackers Found: ${trackers.length}");
     for (var tr in trackers) {
-      await tr.populatePoints(queryService, 3, tr.trackerName);
+      await tr.populatePoints(queryService, 12, tr.trackerName);
       //tr.populatePoints(service, lastHours, trackerName)
       for (var point in tr.trackerPoints) {
         _markers.add(Marker(
@@ -181,10 +182,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void updateTrackerInfo(Tracker tracker) {
     TrackerPoint lastPoint = tracker.trackerPoints.last;
-    trackerTitle = "${lastPoint.emoji}  ${tracker.trackerName}";
+    trackerTitle = "${lastPoint.emoji}  ${tracker.displayName}";
     batteryText = "${lastPoint.battery}%";
     altitude = "${lastPoint.alt}m";
     addressInfo = lastPoint.address;
+    pointsFoundText = "${tracker.pointsRecorded} points";
     lat = lastPoint.lat;
     lon = lastPoint.lon;
 
@@ -310,12 +312,25 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             ),
           ]),
+          const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.location_on, color: Colors.black, size: 35.0),
+            const SizedBox(width: 10),
             Flexible(
                 child: Text(addressInfo,
                     textScaleFactor: 1.25,
                     style: const TextStyle(fontWeight: FontWeight.bold)))
+          ]),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Icon(Icons.remove_red_eye, color: Colors.black, size: 35.0),
+            const SizedBox(width: 10),
+            Flexible(
+                child: Text(
+              pointsFoundText,
+              textScaleFactor: 1.25,
+            ))
+            //style: const TextStyle(fontWeight: FontWeight.bold)))
           ]),
         ]),
         body: Center(
@@ -329,6 +344,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void attemptLaunchGoogleMaps() {
-    MapUtils.openMap(lat.toDouble(), lon.toDouble());
+    MapUtils.openMap(lat.toDouble(), lon.toDouble(), trackerTitle);
   }
 }

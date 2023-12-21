@@ -37,6 +37,8 @@ class TrackerManager {
 class Tracker {
   var trackerPoints = <TrackerPoint>[];
   String trackerName = "";
+  String displayName = "";
+  int pointsRecorded = 0;
 
   Tracker(this.trackerName);
 
@@ -69,6 +71,9 @@ class Tracker {
       |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")''';
 
     var foundPoints = await service.query(fluxQuery);
+    int numPoints = 0;
+
+    TrackerPoint last = TrackerPoint();
     await foundPoints.forEach((record) {
       TrackerPoint tp = TrackerPoint();
       tp.time = record["last_seen"];
@@ -79,15 +84,16 @@ class Tracker {
       tp.battery = record["battery"];
       tp.emoji = record["emoji"] ?? "🔴";
       tp.owningTracker = this;
-
+      displayName = record["name"];
       trackerPoints.add(tp);
+      numPoints++;
     });
+    pointsRecorded = numPoints;
     print(trackerPoints);
     trackerPoints.forEach((point) {
       print(
           "Tracker ${trackerName}: Address: ${point.address} (Lat: ${point.lat}, Lon: ${point.lon}), ${point.battery}% Battery, Time: ${point.time}");
     });
-
     print(fluxQuery);
   }
 }
