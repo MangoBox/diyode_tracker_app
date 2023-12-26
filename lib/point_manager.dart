@@ -70,6 +70,16 @@ class Tracker {
       |> filter(fn: (r) => r["_measurement"] == "$trackerName")
       |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")''';
 
+    //If we're on 'recent only' mode.
+    if (lastHours == 0) {
+      fluxQuery = '''
+      from(bucket: "tracker")
+      |> range(start: -1000h)
+      |> filter(fn: (r) => r["_measurement"] == "$trackerName")
+      |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> last(column: "_time")''';
+    }
+
     var foundPoints = await service.query(fluxQuery);
     int numPoints = 0;
 

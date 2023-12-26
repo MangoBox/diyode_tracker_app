@@ -96,9 +96,25 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+const List<String> list = <String>[
+  'Latest',
+  '1 Hour',
+  '2 Hours',
+  '5 Hours',
+  '10 Hours',
+  '1 Day',
+  '2 Days',
+  '3 Days',
+  '1 Week'
+];
+
+const List<int> hourReqs = <int>[0, 1, 2, 5, 10, 24, 48, 72, 168];
+
 class _MyHomePageState extends State<MyHomePage> {
   late FlutterMap mapInst;
   int _counter = 0;
+
+  int reqHours = 1;
 
   double mapWidth = 0;
   double mapHeight = 0;
@@ -147,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
     print("Found Trackers: ${trackers.length}");
     //print("Trackers Found: ${trackers.length}");
     for (var tr in trackers) {
-      await tr.populatePoints(queryService, 12, tr.trackerName);
+      await tr.populatePoints(queryService, reqHours, tr.trackerName);
       //tr.populatePoints(service, lastHours, trackerName)
       for (var point in tr.trackerPoints) {
         _markers.add(Marker(
@@ -240,6 +256,8 @@ class _MyHomePageState extends State<MyHomePage> {
     getMarkers().whenComplete(() => CompletedMarkerFetch());
   }
 
+  String dropdownValue = list.first;
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -250,17 +268,53 @@ class _MyHomePageState extends State<MyHomePage> {
     // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              widget.title,
+              style: GoogleFonts.bebasNeue(),
+              textScaleFactor: 2,
+            ),
+            DropdownButton<String>(
+              value: dropdownValue,
+              icon: const Icon(Icons.keyboard_arrow_down_sharp),
+              elevation: 16,
+              onChanged: (String? value) {
+                // This is called when the user selects an item.
+                setState(() {
+                  dropdownValue = value!;
+
+                  reqHours = hourReqs[list.indexOf(dropdownValue)];
+                  _markers.clear();
+                  getMarkers().whenComplete(() => CompletedMarkerFetch());
+                });
+              },
+              items: list.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            )
+          ],
+        ),
+
+        /*flexibleSpace: Container(
+            //color: Colors.orange,
+            child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text('Two'),
+            Text('Three'),
+            Text('Four'),
+          ],
+        ))*/ // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
         // change color while the other colors stay the same.
         backgroundColor: Colors.limeAccent,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(
-          widget.title,
-          style: GoogleFonts.bebasNeue(),
-          textScaleFactor: 2,
-        ),
       ),
       body: SlidingUpPanel(
         color: Theme.of(context).colorScheme.inversePrimary,
